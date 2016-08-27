@@ -1,0 +1,13 @@
+#indexconstruction algorithm
+
+#include current directory to introduce the header files
+include_directories("${CMAKE_CUR_BINARY_DIR")
+
+add_library(myutility myutility.cpp)
+
+add_library(indexconstruction indexconstruction.cpp)
+target_link_libraries_
+
+add_library(sais sais.cpp)
+
+add_executable(main)

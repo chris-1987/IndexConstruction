@@ -1,0 +1,26 @@
+#create ic-dev
+PROJECT(ic-dev)
+
+#specify cmake version
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+
+#specify program version
+SET(IC_VERSION_MAJOR 1)
+SET(IC_VERSION_MINOR 0)
+SET(IC_VERSION_PATCH 0)
+
+#set compiler flags
+set(CMAKE_CXX_FLAGS "$CMAKE_CXX_FLAGS} -std=c++11 -W -Wall -O3")
+
+#performance evaluation
+option(PERFORMANCE_EVALUATION "peformance evaluation" OFF)
+
+#generate configure.h with parameter substitution
+CONFIGURE_FILE(
+	"${PROJECT_SRC_DIR}/myconfig.h.in"
+	"${PROJECT_BIN_DIR}/myconfig.h"
+)
+
+
+#build the program
+add_subdirectory(src)
