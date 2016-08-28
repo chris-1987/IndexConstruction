@@ -1,0 +1,1 @@
+小于等于D的LMS子串用std::sort排序，大于D的LMS子串用induced-sorting排序。然后合并。
