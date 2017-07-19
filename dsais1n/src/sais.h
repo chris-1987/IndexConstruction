@@ -42,7 +42,7 @@ SAIS<offset_type>::SAIS(offset_vector_type *_s, offset_vector_type*& _sa_reverse
 
 	uint32 max_alpha = 0;
 
-	for (uint32 i = 0; i < s_size; ++i, _s->next()) {
+	for (uint32 i = 0; i < s_size; ++i, _s->next_remove()) {
 
 		s[i] = static_cast<uint32>(_s->get()); // correct
 

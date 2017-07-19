@@ -33,9 +33,9 @@ private:
 
 	typedef std::priority_queue<pq2_element_type, std::vector<pq2_element_type>, pq2_comparator_type> pq2_type;
 
-	typedef Pair<alphabet_type, offset_type> vec1_element_type; ///< (ch, pos), any two must be different
+	typedef Pair<alphabet_type, offset_type> block_element_type; ///< (ch, pos), any two must be different
 
-	typedef MyVector<vec1_element_type> vec1_type;
+	typedef MyVector<block_element_type> block_type;
 
 private:
 
@@ -45,7 +45,7 @@ private:
 
 	uint64 m_pq2_capacity; ///< capacity of m_heap2
 	
-	std::vector<vec1_type*> m_blocks;
+	std::vector<block_type*> m_blocks;
 
 	uint32 m_cur_block_idx;	
 
@@ -87,36 +87,36 @@ public:
 	/// \note check if non-empty before calling the function
 	pql_element_type top() {
 
-		if (!m_heap1->empty() && !m_heap2->empty()) { // both are non-empty
+		if (!m_heap1->empty()) {
 
-			if (m_heap1->top().first <= m_heap2->top().first) { // suc_names of those in heap1 must be smaller than those in heap2
+			if (!m_heap2->empty()) {
 
-				m_cur_block_idx = m_heap1->top().second; // block_idx
+				if (m_heap1->top().first <= m_heap2->top().first) { // m_heap1
 
-				return pql_element_type(m_heap1->top().first, m_blocks[m_cur_block_idx]->get().second); // (ch, pos)
+					m_cur_block_idx = m_heap1->top().second; // block_idx
+
+					return pql_element_type(m_heap1->top().first, m_blocks[m_cur_block_idx]->get().second); // (ch, pos)
+				}
+				else { // m_heap2
+
+					m_cur_block_idx = std::numeric_limits<uint32>::max();
+
+					return pql_element_type(m_heap2->top().first, m_heap2->top().third); // (ch, pos)
+				}
 			}
-			else {
-
-				m_cur_block_idx = std::numeric_limits<uint32>::max();
-
-				return pql_element_type(m_heap2->top().first, m_heap2->top().third); // (ch, pos)
-			}
-		}
-		else { // m_heap1 or m_heap2 is empty
-
-			if (!m_heap1->empty()) { // m_heap2 is empty
+			else { // m_heap1
 
 				m_cur_block_idx = m_heap1->top().second;
 
 				return pql_element_type(m_heap1->top().first, m_blocks[m_cur_block_idx]->get().second);
 			}
-			else { // m_heap1 is empty
+		}
+		else { // m_heap2
 
 				m_cur_block_idx = std::numeric_limits<uint32>::max();
 
 				return pql_element_type(m_heap2->top().first, m_heap2->top().third);
-			}
-		}
+		}	
 	}
 
 
@@ -144,32 +144,25 @@ public:
 	///
 	void push(const pq2_element_type & _value) {
 
-		if (m_cur_block_idx != std::numeric_limits<uint32>::max()) { // heap2 may exceed the capacity
+		m_heap2->push(_value);
 
-			if (m_heap2->size() == m_pq2_capacity) {
+		if (m_heap2->size() == m_pq2_capacity) {
 	
-				m_blocks.push_back(new vec1_type());	
+			m_blocks.push_back(new block_type());	
 	
-				while (!m_heap2->empty()) {
+			while (!m_heap2->empty()) {
 
-					const pq2_element_type& cur_str = m_heap2->top();
+				const pq2_element_type& cur_str = m_heap2->top();
 
-					m_blocks[m_blocks.size() - 1]->push_back(vec1_element_type(cur_str.first, cur_str.third));
+				m_blocks[m_blocks.size() - 1]->push_back(block_element_type(cur_str.first, cur_str.third));
 
-					m_heap2->pop();
-				}
+				m_heap2->pop();
+			}
 
-				m_blocks[m_blocks.size() - 1]->start_read();
+			m_blocks[m_blocks.size() - 1]->start_read();
 
-				m_heap1->push(pq1_element_type(m_blocks[m_blocks.size() - 1]->get().first, m_blocks.size() - 1));
-			}	
-
-			m_heap2->push(_value);
-		}		
-		else { // pop from heap2, then push into heap2, the total number remains unchanged, won't exceed the capacity
-
-			m_heap2->push(_value);
-		}
+			m_heap1->push(pq1_element_type(m_blocks[m_blocks.size() - 1]->get().first, m_blocks.size() - 1));
+		}	
 	}
 };
 
@@ -191,9 +184,9 @@ private:
 
 	typedef std::priority_queue<pq2_element_type, std::vector<pq2_element_type>, pq2_comparator_type> pq2_type;
 
-	typedef Pair<alphabet_type, offset_type> vec1_element_type; ///< (ch, pos)
+	typedef Pair<alphabet_type, offset_type> block_element_type; ///< (ch, pos)
 
-	typedef MyVector<vec1_element_type> vec1_type;
+	typedef MyVector<block_element_type> block_type;
 
 private:
 
@@ -203,7 +196,7 @@ private:
 
 	uint64 m_pq2_capacity;  ///< capacity for m_heap2 
 	
-	std::vector<vec1_type*> m_blocks; ///< store the substrs induced from the previously scanned name bucket (except for those on RAM)
+	std::vector<block_type*> m_blocks; ///< store the substrs induced from the previously scanned name bucket (except for those on RAM)
 
 	uint32 m_cur_block_idx;	
 
@@ -244,35 +237,35 @@ public:
 	/// \note check if non-empty before calling the function
 	pqs_element_type top() {
 
-		if (!m_heap1->empty() && !m_heap2->empty()) { // both are non-empty
+		if (!m_heap1->empty()) {
 
-			if (m_heap1->top().first >= m_heap2->top().first) {
+			if (!m_heap2->empty()) {
 
-				m_cur_block_idx = std::numeric_limits<uint32>::max() - m_heap1->top().second; // block_idx
+				if (m_heap1->top().first >= m_heap2->top().first) {
 
-				return pqs_element_type(m_heap1->top().first, m_blocks[m_cur_block_idx]->get().second);
+					m_cur_block_idx = std::numeric_limits<uint32>::max() - m_heap1->top().second; // block_idx
+
+					return pqs_element_type(m_heap1->top().first, m_blocks[m_cur_block_idx]->get().second);
+				}
+				else {
+	
+					m_cur_block_idx = std::numeric_limits<uint32>::max();
+
+					return pqs_element_type(m_heap2->top().first, m_heap2->top().third);
+				}	
 			}
 			else {
-
-				m_cur_block_idx = std::numeric_limits<uint32>::max();
-
-				return pqs_element_type(m_heap2->top().first, m_heap2->top().third);
-			}
-		}
-		else { // only one is non-empty
-
-			if (!m_heap1->empty()) {
 
 				m_cur_block_idx = std::numeric_limits<uint32>::max() - m_heap1->top().second;
 
 				return pqs_element_type(m_heap1->top().first, m_blocks[m_cur_block_idx]->get().second);
 			}
-			else {
+		}
+		else {
 
-				m_cur_block_idx = std::numeric_limits<uint32>::max();
+			m_cur_block_idx = std::numeric_limits<uint32>::max();
 
-				return pqs_element_type(m_heap2->top().first, m_heap2->top().third);
-			}
+			return pqs_element_type(m_heap2->top().first, m_heap2->top().third);
 		}
 	}
 
@@ -301,31 +294,24 @@ public:
 	///
 	void push(const pq2_element_type & _value) {
 
-		if (m_cur_block_idx != std::numeric_limits<uint32>::max()) {
+		m_heap2->push(_value);
 
-			if (m_heap2->size() == m_pq2_capacity) {
+		if (m_heap2->size() == m_pq2_capacity) {
 
-				m_blocks.push_back(new vec1_type());	
+			m_blocks.push_back(new block_type());	
 	
-				while (!m_heap2->empty()) {
+			while (!m_heap2->empty()) {
 
-					pq2_element_type cur_str = m_heap2->top();
+				pq2_element_type cur_str = m_heap2->top();
 
-					m_blocks[m_blocks.size() - 1]->push_back(vec1_element_type(cur_str.first, cur_str.third));
+				m_blocks[m_blocks.size() - 1]->push_back(block_element_type(cur_str.first, cur_str.third));
 
-					m_heap2->pop();
-				}
-
-				m_blocks[m_blocks.size() - 1]->start_read();
-
-				m_heap1->push(pq1_element_type(m_blocks[m_blocks.size() - 1]->get().first, std::numeric_limits<uint32>::max() - m_blocks.size() + 1));
+				m_heap2->pop();
 			}
 
-			m_heap2->push(_value);
-		}		
-		else { // pop one and push one, the total number remains unchanged
+			m_blocks[m_blocks.size() - 1]->start_read();
 
-			m_heap2->push(_value);
+			m_heap1->push(pq1_element_type(m_blocks[m_blocks.size() - 1]->get().first, std::numeric_limits<uint32>::max() - m_blocks.size() + 1));
 		}
 	}
 };

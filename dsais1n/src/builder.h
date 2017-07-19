@@ -22,6 +22,8 @@
 //#define DEBUG_TEST2
 //#define DEBUG_TEST1
 
+#define STATISTICS_COLLECTION
+
 
 template<typename alphabet_type, typename offset_type>
 class DSAComputation;
@@ -74,7 +76,10 @@ public:
 
 		s_target->push_back(alphabet_type(0));
 
-		s_target->finish();
+#ifdef STATISTICS_COLLECTION
+
+		Logger::addIV(s_origin_len * sizeof(alphabet_type)); // read from s_origin (stxxl)
+#endif
 
 #ifdef DEBUG_TEST3
 
@@ -108,7 +113,7 @@ public:
 		// clear
 		delete s_target; s_target = nullptr;
 
-		// produce sa from sa_reverse
+		// produce sa from sa_reverse (notice: pdu remains unchanged)
 		stxxl::syscall_file *sa_file = new stxxl::syscall_file(m_sa_fname, stxxl::syscall_file::CREAT | stxxl::syscall_file::RDWR | stxxl::syscall_file::DIRECT);
 
 		offset_vector_type *sa = new offset_vector_type(sa_file); 
@@ -130,12 +135,22 @@ public:
 
 		sa_writer.finish();
 
+#ifdef STATISTICS_COLLECTION
+
+		Logger::addOV(s_origin_len * sizeof(offset_type)); // pdu remains unchanged but OV keep increasing for generating sa (stxxl)
+#endif
+
 		// clear
 		delete sa; sa = nullptr;
 
 		delete sa_file; sa_file = nullptr;
 
 		delete sa_reverse; sa_reverse = nullptr;
+
+#ifdef STATISTICS_COLLECTION
+
+		Logger::report(s_origin_len);
+#endif
 
 		return;		
 	}
@@ -370,7 +385,28 @@ void DSAComputation<alphabet_type, offset_type>::run() {
 	// sort S*-substrs
 	bool is_unique = sortSStarGlobal();
 
+#ifdef DEBUG_TEST3
+
+	std::cerr << "m_s1:\n";
+
+	m_s1->start_read();
+
+	while (!m_s1->is_eof()) {
+
+		std::cerr << m_s1->get() << " ";
+
+		m_s1->next();
+	}
+#endif
+
 	offset_vector_type *sa1_reverse = nullptr;
+
+#ifdef DEBUG_TEST4
+
+	std::cerr << "level: " << m_level << std::endl; 
+
+	std::cerr << "unique: " << is_unique << std::endl;
+#endif
 
 	// check recursion condition
 	if (is_unique == false) {
@@ -404,17 +440,56 @@ bool DSAComputation<alphabet_type, offset_type>::sortSStarGlobal() {
 
 		m_s1->push_back(OFFSET_MIN);
 
-		m_s1->finish();
-
 		return true;
 	}
 
 	m_s->start_read_reverse(); // read s reversely to process the blocks from right to left
 
+#ifdef DEBUG_TEST4
+	std::cerr << "lms_num: " << lms_num << std::endl;
+#endif
+
 	for (uint8 i = 0; i < m_blocks_info.size() - 1; ++i) { // no need to process the leftmost block, cause it contains no S*-type substrs
 
 		sortSStarBlock(m_blocks_info[i]);
 	}
+
+
+#ifdef DEBUG_TEST3
+
+	for (uint8 i = 0; i < m_blocks_info.size() - 1; ++i) {
+
+		std::cerr << "block id: " << (uint32) i << std::endl;
+	
+		std::cerr << "bwt_l: \n";
+
+		m_sub_l_bwt_seqs[i]->start_read();
+
+		while (!m_sub_l_bwt_seqs[i]->is_eof()) {
+
+			std::cerr << (uint32)m_sub_l_bwt_seqs[i]->get() << " ";
+
+			m_sub_l_bwt_seqs[i]->next();
+		}
+
+		std::cerr << std::endl;
+
+		std::cerr << "bwt_s: \n";
+
+		m_sub_s_bwt_seqs[i]->start_read();
+
+		while (!m_sub_s_bwt_seqs[i]->is_eof()) {
+
+			std::cerr << (uint32)m_sub_s_bwt_seqs[i]->get() << " ";
+
+			m_sub_s_bwt_seqs[i]->next();
+		}
+
+		std::cerr << std::endl;
+	}
+
+	
+#endif
 
 	bool is_unique = mergeSortedSStarGlobal();
 
@@ -426,6 +501,8 @@ bool DSAComputation<alphabet_type, offset_type>::sortSStarGlobal() {
 /// \return number of S*-substrs 
 template<typename alphabet_type, typename offset_type>
 uint64 DSAComputation<alphabet_type, offset_type>::partitionS() {
+
+	std::cerr << "partition is started\n";
 
 	// scan s leftward to find all the S*-substrs
 	alphabet_type cur_ch, last_ch;
@@ -503,6 +580,8 @@ uint64 DSAComputation<alphabet_type, offset_type>::partitionS() {
 	}
 
 	compute_block_id_of_samplings(); // compute block_id for samplings
+
+	std::cerr << "partition is over\n";
 
 	return lms_num;
 }
@@ -630,8 +709,6 @@ void DSAComputation<alphabet_type, offset_type>::sortSStarSingleBlock(const Bloc
 
 	sub_l_bwt_seq->push_back(m_s->get_reverse()); // push the preceding of the leftmost L-type
 
-	sub_l_bwt_seq->finish();
-
 	// induce S
 	alphabet_vector_type *sub_s_bwt_seq = new alphabet_vector_type();
 
@@ -658,8 +735,6 @@ void DSAComputation<alphabet_type, offset_type>::sortSStarSingleBlock(const Bloc
 
 		--toread; // do not perform m_s->next_reverse, because two successive blocks overlap the character
 	}
-
-	sub_s_bwt_seq->finish();
 
 	m_sub_l_bwt_seqs.push_back(sub_l_bwt_seq), m_sub_s_bwt_seqs.push_back(sub_s_bwt_seq);
 
@@ -801,8 +876,6 @@ void DSAComputation<alphabet_type, offset_type>::sortSStarMultiBlock(const Block
 		}
 	} 
 
-	sub_l_bwt_seq->finish();
-
 	if (FORMAT == true) {
 		
 		getBuckets<uint32>(fs, block_size, bkt, max_alpha + 1, true);
@@ -839,8 +912,6 @@ void DSAComputation<alphabet_type, offset_type>::sortSStarMultiBlock(const Block
 	}
 
 	delete bkt; bkt = nullptr;
-
-	sub_s_bwt_seq->finish();
 
 	// 
 	m_sub_l_bwt_seqs.push_back(sub_l_bwt_seq), m_sub_s_bwt_seqs.push_back(sub_s_bwt_seq);
@@ -1038,7 +1109,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 				if (pre_ch >= cur_bkt) { // preceding is L-type
 
-					pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1), false);
+					pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1));
 				}
 				else { // current is L*-type
 
@@ -1072,7 +1143,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 					if (pre_ch >= cur_bkt) { // preceding is L-type
 
-						pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1), false);
+						pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1));
 					}
 					else { // current is L*-type
 			
@@ -1112,7 +1183,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 				
 				if (pre_ch > cur_bkt) {
 
-					pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1), true);
+					pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1));
 				}							 
 
 				// scan the remaining elements in the name bucket
@@ -1135,7 +1206,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 					if (pre_ch > cur_bkt) {
 
-						pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1), true);
+						pq_l->push(triple_type(pre_ch, name_cnt, cur_str.second - 1));
 					} 
 				}						
 
@@ -1243,7 +1314,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 					if (pre_ch <= cur_bkt) { // preceding is S-type
 
-						pq_s->push(triple_type(pre_ch, name_cnt, cur_str.second - 1), false);
+						pq_s->push(triple_type(pre_ch, name_cnt, cur_str.second - 1));
 					}
 					else { // current is S*-type
 					
@@ -1284,7 +1355,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 						if (pre_ch <= cur_bkt) {
 
-							pq_s->push(triple_type(pre_ch, name_cnt, cur_str.second - 1), false);
+							pq_s->push(triple_type(pre_ch, name_cnt, cur_str.second - 1));
 						}
 						else {
 
@@ -1319,7 +1390,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 				if (pre_ch < cur_bkt) {
 
-					pq_s->push(triple_type(pre_ch, name_cnt, cur_pos - 1), true);
+					pq_s->push(triple_type(pre_ch, name_cnt, cur_pos - 1));
 				}	
 
 				lml_diff_global = sorted_l_diff->get_reverse();
@@ -1342,7 +1413,7 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 					if (pre_ch < cur_bkt) {
 
-						pq_s->push(triple_type(pre_ch, name_cnt, cur_pos - 1), true);
+						pq_s->push(triple_type(pre_ch, name_cnt, cur_pos - 1));
 					}	
 
 					lml_diff_global = sorted_l_diff->get_reverse();
@@ -1403,6 +1474,11 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 
 	// generate s1 and check if duplicate names exist
+
+#ifdef DEBUG_TEST4
+	std::cerr << "start sorting substr name.\n";
+#endif 
+
 	typedef Pair<offset_type, offset_type> pair_type2; // <pos, name>
 
 	typedef TupleAscCmp1<pair_type2> pair_comparator_type2;
@@ -1444,6 +1520,12 @@ bool DSAComputation<alphabet_type, offset_type>::mergeSortedSStarGlobal() {
 
 		lms_substr_sorter->sort();
 		
+#ifdef DEBUG_TEST4
+	std::cerr << "finish sorting substr name.\n";
+
+	std::cerr << "start producing S1.\n";
+#endif
+
 		m_s1 = new offset_vector_type();
 
 		while (!lms_substr_sorter->empty()) {
@@ -1518,6 +1600,10 @@ void DSAComputation<alphabet_type, offset_type>::sortSuffixGlobal(offset_vector_
 	}
 	else { // m_s1 has been deleted, use m_sa1
 
+#ifdef DEBUG_TEST4
+		std::cerr << "create sorter lms suffix\n";
+#endif
+
 		typedef Pair<offset_type, offset_type> pair_type;
 
 		typedef TupleDscCmp1<pair_type> pair_comparator_type;
@@ -1528,7 +1614,7 @@ void DSAComputation<alphabet_type, offset_type>::sortSuffixGlobal(offset_vector_
 
 		_sa1_reverse->start_read_reverse();
 
-		for (offset_type i = 0; !_sa1_reverse->is_eof(); ++i, _sa1_reverse->next_reverse()) { 
+		for (offset_type i = 0; !_sa1_reverse->is_eof(); ++i, _sa1_reverse->next_remove_reverse()) { 
 
 			sorter_lms->push(pair_type(_sa1_reverse->get_reverse() + 1, i)); // sa1_reader + 1 != 0 
 		}

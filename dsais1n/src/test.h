@@ -22,9 +22,9 @@
 ///
 void test_my_sorter() {
 
-	typedef Pair<uint40, uint32> pair_type;
+	typedef Pair<uint32, uint32> pair_type;
 
-	typedef TupleAscCmp1<pair_type> pair_comparator_type;
+	typedef TupleAscCmp2<pair_type> pair_comparator_type;
 
 	MySorter<pair_type, pair_comparator_type> my_sorter(500);
 
@@ -32,24 +32,22 @@ void test_my_sorter() {
 
 	for (uint32 i = 0; i < 100; ++i) {
 
-		uint40 first = i;
+		uint32 first = i * 37 % 32;
 
 		uint32 second = i;
 
+		std::cerr << "first: " << first << " second: " << second << std::endl;
+
 		my_sorter.push(pair_type(first, second));
-
-		std::cerr << i <<"\t";
-
-		std::cin.get();
 	}
 	
-	std::cerr << "start sorting\n";
-
 	my_sorter.sort();
 
 	std::cerr << "report statistics\n";
 
 	my_sorter.report();
+
+	std::cin.get();
 
 
 	std::cerr << "output sorted data:\n";

@@ -46,17 +46,15 @@ constexpr uint64 K_512 = 512 * 1024;
 
 constexpr uint64 K_1024 = 1024 * 1024;
 
-constexpr uint64 MAX_MEM = 1 * 1024 * K_1024;
-
-//constexpr uint64 MAX_MEM = 70;
+constexpr uint64 MAX_MEM = 3 * 1024 * K_1024;
 
 constexpr uint64 MAX_ITEM = 16 * K_1024;
 
 // for MY_VECTOR
-//const uint64 PHYSICAL_VECTOR_CAPACITY = 50 * K_1024; // 30M
-const uint64 PHYSICAL_VECTOR_CAPACITY = 3 * K_1024;
+const uint64 VEC_BUF_RAM = 2 * K_1024; // 2M
 
-// for MY_PQ
-//const uint64 MEM_HEAP_CAPACITY = 5;
+const uint64 PHI_VEC_EM = 20 * K_1024; // 50M
+
+static uint32 global_file_idx = 0;
 
 #endif // __COMMON_H

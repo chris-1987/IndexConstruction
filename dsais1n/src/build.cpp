@@ -19,12 +19,12 @@ int main(int argc, char** argv){
 
 	cfg->add_disk(disk);
 	
-	// statistics collection
-	stxxl::stats *Stats = stxxl::stats::get_instance();
+//	// statistics collection
+//	stxxl::stats *Stats = stxxl::stats::get_instance();
 
-	stxxl::stats_data stats_begin(*Stats);
+//	stxxl::stats_data stats_begin(*Stats);
 
-	stxxl::block_manager *bm = stxxl::block_manager::get_instance();
+//	stxxl::block_manager *bm = stxxl::block_manager::get_instance();
 
 	// check if input params are legal
 	if (argc != 3) {
@@ -55,14 +55,14 @@ int main(int argc, char** argv){
 
 	dsa.run();
 
-	// output report
-	std::cerr << (stxxl::stats_data(*Stats) - stats_begin);
+//	// output report
+//	std::cerr << (stxxl::stats_data(*Stats) - stats_begin);
 
-	uint64 pdu = bm->get_maximum_allocation(); 
+//	uint64 pdu = bm->get_maximum_allocation(); 
 
-	std::cerr << "pdu\t total: " << pdu << "\t per char:" << (double)pdu / s_size << std::endl;
+//	std::cerr << "pdu\t total: " << pdu << "\t per char:" << (double)pdu / s_size << std::endl;
 
-	uint64 io_volume = Stats->get_written_volume() + Stats->get_read_volume(); 
+//	uint64 io_volume = Stats->get_written_volume() + Stats->get_read_volume(); 
 
-	std::cerr << "io\t total: " << io_volume << "\t per char: " << (double)io_volume / s_size << std::endl;
+//	std::cerr << "io\t total: " << io_volume << "\t per char: " << (double)io_volume / s_size << std::endl;
 }
